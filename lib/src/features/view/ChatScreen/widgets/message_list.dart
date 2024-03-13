@@ -19,23 +19,20 @@ class MessageListState extends State<MessageList> {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      child: ListView.builder(
-        controller: widget.scrollController,
-        itemCount: widget.messages.length,
-        itemBuilder: (context, index) {
-          return _MessageOwnTile(message: widget.messages[index]);
-        },
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ListView.builder(
+          shrinkWrap: true,
+          reverse: true,
+          controller: widget.scrollController,
+          itemCount: widget.messages.length,
+          itemBuilder: (context, index) {
+            return _MessageOwnTile(message: widget.messages[index]);
+          },
+        ),
       ),
     );
   }
-
-  // void scrollToBottom() {
-  //   scrollController.animateTo(
-  //     scrollController.position.maxScrollExtent,
-  //     duration: const Duration(milliseconds: 300),
-  //     curve: Curves.easeInOut,
-  //   );
-  // }
 }
 
 class _MessageOwnTile extends StatelessWidget {

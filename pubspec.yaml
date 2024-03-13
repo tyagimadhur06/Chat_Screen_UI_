@@ -13,6 +13,7 @@ dependencies:
   flutter:
     sdk: flutter
   get: ^4.6.6
+  receive_sharing_intent: ^1.6.7
 
 dev_dependencies:
   flutter_test:

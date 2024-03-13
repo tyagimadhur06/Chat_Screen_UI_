@@ -47,7 +47,7 @@ class _ChatScreenState extends State<ChatScreen> {
       // Scroll to the bottom after adding new message
       Timer(const Duration(milliseconds: 500), () {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          _scrollController.position.minScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
         );
@@ -73,7 +73,7 @@ class _ChatScreenState extends State<ChatScreen> {
       // Scroll to the bottom after adding new message
       Timer(const Duration(milliseconds: 500), () {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          _scrollController.position.minScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
         );
@@ -97,7 +97,7 @@ class _ChatScreenState extends State<ChatScreen> {
       // Scroll to the bottom after adding new message
       Timer(const Duration(milliseconds: 500), () {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          _scrollController.position.minScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
         );

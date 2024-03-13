@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chat_screen/src/common/icon_button.dart';
 import 'package:chat_screen/src/features/view/ChatScreen/widgets/action_bar.dart';
 import 'package:chat_screen/src/features/view/ChatScreen/widgets/appbar_title.dart';
@@ -24,6 +26,7 @@ class _ChatScreenState extends State<ChatScreen> {
   ];
 
   TextEditingController messageController = TextEditingController();
+  ScrollController _scrollController = ScrollController();
 
   @override
   Widget build(BuildContext context) {
@@ -69,21 +72,26 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
               child: MessageList(
             messages: messages,
+            scrollController: _scrollController,
           )),
           ActionBar(
             messageController: messageController,
-            onSendPressed: () {
-              String newMessage = messageController.text;
-              if (newMessage.isNotEmpty) {
-                setState(() {
-                  messages.add(newMessage);
-                  messageController.clear();
-                });
-              }
-            },
+            onSendPressed: () => addNewMessage(),
           ),
         ],
       ),
     );
+  }
+
+  addNewMessage() {
+    String newMessage = messageController.text;
+    if (newMessage.isNotEmpty) {
+      setState(() {
+        messages.add(newMessage);
+        messageController.clear();
+      });
+    }
+    Timer(const Duration(milliseconds: 500),
+            () => _scrollController.jumpTo(_scrollController.position.maxScrollExtent));
   }
 }

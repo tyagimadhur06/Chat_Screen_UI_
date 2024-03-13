@@ -1,31 +1,41 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:flutter/material.dart';
 
 class MessageList extends StatefulWidget {
   const MessageList({
     Key? key,
     required this.messages,
+    required this.scrollController,
   }) : super(key: key);
 
   @override
   State<MessageList> createState() => MessageListState();
   final List<String> messages;
+  final scrollController;
 }
 
 class MessageListState extends State<MessageList> {
- 
-
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0),
       child: ListView.builder(
+        controller: widget.scrollController,
         itemCount: widget.messages.length,
         itemBuilder: (context, index) {
-          return _MessageOwnTile(message:widget.messages[index]);
+          return _MessageOwnTile(message: widget.messages[index]);
         },
       ),
     );
   }
+
+  // void scrollToBottom() {
+  //   scrollController.animateTo(
+  //     scrollController.position.maxScrollExtent,
+  //     duration: const Duration(milliseconds: 300),
+  //     curve: Curves.easeInOut,
+  //   );
+  // }
 }
 
 class _MessageOwnTile extends StatelessWidget {

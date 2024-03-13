@@ -7,6 +7,7 @@ import 'package:chat_screen/src/features/view/ChatScreen/widgets/message_list.da
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/route_manager.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -26,7 +27,62 @@ class _ChatScreenState extends State<ChatScreen> {
   ];
 
   TextEditingController messageController = TextEditingController();
-  ScrollController _scrollController = ScrollController();
+  final ScrollController _scrollController = ScrollController();
+  @override
+  void initState() {
+    super.initState();
+    // Setup receiving sharing intents
+    setupSharingListener();
+  }
+
+  @override
+  void dispose() {
+    // Clean up receiving sharing intents
+    disposeSharingListener();
+    super.dispose();
+  }
+
+  void setupSharingListener() {
+    ReceiveSharingIntent.getInitialMedia().then((List<SharedMediaFile>? value) {
+      if (value != null && value.isNotEmpty) {
+        // Handle initial shared media (text) data
+        addNewMessage(value.first.toString());
+        print("The following media shared: $value");
+      }
+    });
+
+    ReceiveSharingIntent.getMediaStream().listen((List<SharedMediaFile> value) {
+      // Handle the shared media (text) data
+      if (value.isNotEmpty) {
+        addNewMessage(value.first.toString());
+        print("The following media shared: $value");
+
+      }
+    }, onError: (err) {
+      print("Error receiving shared media: $err");
+    });
+  }
+
+  void disposeSharingListener() {
+    ReceiveSharingIntent.reset();
+  }
+
+  void addNewMessage(String newMessage) {
+    if (newMessage.isNotEmpty) {
+      setState(() {
+        messages.add(newMessage);
+        messageController.clear();
+      });
+      // Scroll to the bottom after adding new message
+      Timer(const Duration(milliseconds: 500), () {
+        _scrollController.animateTo(
+          _scrollController.position.minScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,27 +127,15 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
               child: MessageList(
-            messages: messages,
+            messages: messages.reversed.toList(),
             scrollController: _scrollController,
           )),
           ActionBar(
             messageController: messageController,
-            onSendPressed: () => addNewMessage(),
+            onSendPressed: () => addNewMessage(messageController.text),
           ),
         ],
       ),
     );
-  }
-
-  addNewMessage() {
-    String newMessage = messageController.text;
-    if (newMessage.isNotEmpty) {
-      setState(() {
-        messages.add(newMessage);
-        messageController.clear();
-      });
-    }
-    Timer(const Duration(milliseconds: 500),
-            () => _scrollController.jumpTo(_scrollController.position.maxScrollExtent));
   }
 }

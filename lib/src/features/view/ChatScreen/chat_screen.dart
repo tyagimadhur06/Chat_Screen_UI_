@@ -25,58 +25,79 @@ class _ChatScreenState extends State<ChatScreen> {
     'Come fast',
     'Coming in 10 min ',
   ];
-
+  List<Map<String, dynamic>> messageData = [];
+  final sharedFiles = <SharedMediaFile>[];
+  late StreamSubscription _intentSub;
   TextEditingController messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   @override
   void initState() {
     super.initState();
-    // Setup receiving sharing intents
-    setupSharingListener();
+
+    // Listen to media sharing coming from outside the app while the app is in the memory.
+    _intentSub = ReceiveSharingIntent.getMediaStream().listen((value) {
+      setState(() {
+        for(SharedMediaFile i in value){
+          messageData.add({"type": "IMAGE", "value": i});
+        }
+        //sharedFiles.addAll(value);
+        // sharedFiles.clear();
+        //print("the shared file is ${sharedFiles.map((f) => f.toMap())}");
+      });
+      // Scroll to the bottom after adding new message
+      Timer(const Duration(milliseconds: 500), () {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      });
+    }, onError: (err) {
+      print("getIntentDataStream error: $err");
+    });
+
+    // Get the media sharing coming from outside the app while the app is closed.
+    ReceiveSharingIntent.getInitialMedia().then((value) {
+      setState(() {
+        for(SharedMediaFile i in value){
+          messageData.add({"type": "IMAGE", "value": i});
+        }
+        
+        //sharedFiles.addAll(value);
+        // sharedFiles.clear();
+        //print(sharedFiles.map((f) => f.toMap()));
+
+        // Tell the library that we are done processing the intent.
+        ReceiveSharingIntent.reset();
+      });
+      // Scroll to the bottom after adding new message
+      Timer(const Duration(milliseconds: 500), () {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      });
+    });
   }
 
   @override
   void dispose() {
-    // Clean up receiving sharing intents
-    disposeSharingListener();
+    _intentSub.cancel();
     super.dispose();
-  }
-
-  void setupSharingListener() {
-    ReceiveSharingIntent.getInitialMedia().then((List<SharedMediaFile>? value) {
-      if (value != null && value.isNotEmpty) {
-        // Handle initial shared media (text) data
-        addNewMessage(value.first.toString());
-        print("The following media shared: $value");
-      }
-    });
-
-    ReceiveSharingIntent.getMediaStream().listen((List<SharedMediaFile> value) {
-      // Handle the shared media (text) data
-      if (value.isNotEmpty) {
-        addNewMessage(value.first.toString());
-        print("The following media shared: $value");
-
-      }
-    }, onError: (err) {
-      print("Error receiving shared media: $err");
-    });
-  }
-
-  void disposeSharingListener() {
-    ReceiveSharingIntent.reset();
   }
 
   void addNewMessage(String newMessage) {
     if (newMessage.isNotEmpty) {
       setState(() {
+        messageData.add({"type": "TEXT", "value": newMessage});
         messages.add(newMessage);
         messageController.clear();
       });
       // Scroll to the bottom after adding new message
       Timer(const Duration(milliseconds: 500), () {
         _scrollController.animateTo(
-          _scrollController.position.minScrollExtent,
+          _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
         );
@@ -128,7 +149,9 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
               child: MessageList(
             messages: messages.reversed.toList(),
+            sharedFiles: sharedFiles,
             scrollController: _scrollController,
+            messageData: messageData.reversed.toList(),
           )),
           ActionBar(
             messageController: messageController,
@@ -138,4 +161,10 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+}
+
+class messageDTO {
+  String? type;
+  dynamic value;
+  messageDTO({this.type, this.value});
 }

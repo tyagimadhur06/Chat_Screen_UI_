@@ -7,6 +7,7 @@ import 'package:chat_screen/src/features/view/ChatScreen/widgets/message_list.da
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/route_manager.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -35,9 +36,9 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
 
     // Listen to media sharing coming from outside the app while the app is in the memory.
-    _intentSub = ReceiveSharingIntent.getMediaStream().listen((value) {
+    ReceiveSharingIntent.getMediaStream().listen((value) {
       setState(() {
-        for(SharedMediaFile i in value){
+        for (SharedMediaFile i in value) {
           messageData.add({"type": "IMAGE", "value": i});
         }
         //sharedFiles.addAll(value);
@@ -59,10 +60,10 @@ class _ChatScreenState extends State<ChatScreen> {
     // Get the media sharing coming from outside the app while the app is closed.
     ReceiveSharingIntent.getInitialMedia().then((value) {
       setState(() {
-        for(SharedMediaFile i in value){
+        for (SharedMediaFile i in value) {
           messageData.add({"type": "IMAGE", "value": i});
         }
-        
+
         //sharedFiles.addAll(value);
         // sharedFiles.clear();
         //print(sharedFiles.map((f) => f.toMap()));
@@ -156,10 +157,45 @@ class _ChatScreenState extends State<ChatScreen> {
           ActionBar(
             messageController: messageController,
             onSendPressed: () => addNewMessage(messageController.text),
+            onCameraPressed: () => _pickImageFromCamera(),
+            onGalleryPressed: () => _pickImageFromGallery(),
           ),
         ],
       ),
     );
+  }
+
+  _pickImageFromGallery() async {
+    final pickedImage =
+        await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (pickedImage != null) {
+      final String mimeType = 'image/${pickedImage.path.split('.').last}';
+      final sharedMediaFile = SharedMediaFile(
+        path: pickedImage.path,
+        type: SharedMediaType.image,
+        thumbnail: 'Image',
+        mimeType:mimeType, 
+      );
+      setState(() {
+        messageData.add({"type": "IMAGE", "value": sharedMediaFile});
+      });
+    }
+  }
+  _pickImageFromCamera() async {
+    final pickedImage =
+        await ImagePicker().pickImage(source: ImageSource.camera);
+    if (pickedImage != null) {
+      final String mimeType = 'image/${pickedImage.path.split('.').last}';
+      final sharedMediaFile = SharedMediaFile(
+        path: pickedImage.path,
+        type: SharedMediaType.image,
+        thumbnail: 'Image',
+        mimeType:mimeType, 
+      );
+      setState(() {
+        messageData.add({"type": "IMAGE", "value": sharedMediaFile});
+      });
+    }
   }
 }
 

@@ -50,6 +50,10 @@
 
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>To upload photos, please allow permission to access your photo library.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Please allow the app to access the camera.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>To record audio, please allow permission to access your microphone.</string>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

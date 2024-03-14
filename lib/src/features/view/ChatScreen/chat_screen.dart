@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:chat_screen/src/api/api_test.dart';
 import 'package:chat_screen/src/common/icon_button.dart';
 import 'package:chat_screen/src/features/view/ChatScreen/widgets/action_bar.dart';
 import 'package:chat_screen/src/features/view/ChatScreen/widgets/appbar_title.dart';
@@ -31,12 +32,27 @@ class _ChatScreenState extends State<ChatScreen> {
   late StreamSubscription _intentSub;
   TextEditingController messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final HttpService _httpService = HttpService();
+
+  getData() async {
+    await _httpService.getData().then((messages) {
+      print('message data get$messages');
+      setState(() {
+        messageData.addAll(messages);
+      });
+    }).catchError((error) {
+      // Handle errors here
+      print(error);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    getData();
 
     // Listen to media sharing coming from outside the app while the app is in the memory.
-    ReceiveSharingIntent.getMediaStream().listen((value) {
+    _intentSub = ReceiveSharingIntent.getMediaStream().listen((value) {
       setState(() {
         for (SharedMediaFile i in value) {
           messageData.add({"type": "IMAGE", "value": i});
@@ -88,7 +104,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  void addNewMessage(String newMessage) {
+  void addNewMessage(String newMessage) async{
     if (newMessage.isNotEmpty) {
       setState(() {
         messageData.add({"type": "TEXT", "value": newMessage});
@@ -103,6 +119,7 @@ class _ChatScreenState extends State<ChatScreen> {
           curve: Curves.easeInOut,
         );
       });
+      await _httpService.postData(note:newMessage);
     }
   }
 
@@ -174,13 +191,16 @@ class _ChatScreenState extends State<ChatScreen> {
         path: pickedImage.path,
         type: SharedMediaType.image,
         thumbnail: 'Image',
-        mimeType:mimeType, 
+        mimeType: mimeType,
       );
       setState(() {
         messageData.add({"type": "IMAGE", "value": sharedMediaFile});
       });
+      final imagePath = pickedImage.path;
+      await _httpService.postData(imagePath:imagePath);
     }
   }
+
   _pickImageFromCamera() async {
     final pickedImage =
         await ImagePicker().pickImage(source: ImageSource.camera);
@@ -190,17 +210,20 @@ class _ChatScreenState extends State<ChatScreen> {
         path: pickedImage.path,
         type: SharedMediaType.image,
         thumbnail: 'Image',
-        mimeType:mimeType, 
+        mimeType: mimeType,
       );
+    
       setState(() {
         messageData.add({"type": "IMAGE", "value": sharedMediaFile});
       });
+      final imagePath = pickedImage.path;
+      await _httpService.postData(imagePath:imagePath);
     }
   }
 }
 
-class messageDTO {
-  String? type;
-  dynamic value;
-  messageDTO({this.type, this.value});
-}
+// class messageDTO {
+//   String? type;
+//   dynamic value;
+//   messageDTO({this.type, this.value});
+// }

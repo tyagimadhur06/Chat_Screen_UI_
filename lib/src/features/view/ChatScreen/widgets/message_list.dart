@@ -45,11 +45,36 @@ class MessageListState extends State<MessageList> {
             //       (index - widget.messages.length);
             //   return _SharedFileTile(file: widget.sharedFiles[sharedIndex]);
             // }
-            if (widget.messageData[index]['type'] == 'TEXT') {
-              return _MessageOwnTile(
-                  message: widget.messageData[index]["value"]);
+            // if (widget.messageData[index]['id'] == 'TEXT') {
+            //   return _MessageOwnTile(
+            //       message: widget.messageData[index]["value"]);
+            // } else {
+            //   return _SharedFileTile(file: widget.messageData[index]["value"]);
+            // }
+            // return _MessageOwnTile(
+            //   message: widget.messageData[index]['id'].toString(),
+            // );
+            final item = widget.messageData[index];
+            // Check if the item contains both "note" and "fileType" fields
+            if (item.containsKey('note') && item.containsKey('fileType')) {
+              // Render shared file
+              final file = SharedMediaFile(
+                path: item['path'] as String,
+                type: SharedMediaType
+                    .image, // Assuming this is the correct type for images
+                thumbnail: 'Image',
+                mimeType: item['fileType']
+                    as String, // Assuming "fileType" is the MIME type
+              );
+              return _SharedFileTile(file: file);
+            } else if (item.containsKey('note')) {
+              // Render note
+              final message = item['note']
+                  as String; // Assuming "note" contains the text message
+              return _MessageOwnTile(message: message);
             } else {
-              return _SharedFileTile(file: widget.messageData[index]["value"]);
+              // Handle other cases
+              return SizedBox.shrink(); // Or any default widget
             }
           },
         ),

@@ -1,8 +1,10 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 class MessageList extends StatefulWidget {
   const MessageList(
@@ -56,11 +58,13 @@ class MessageListState extends State<MessageList> {
               return _SharedFileTile(imageUrl: imageUrl);
             } else if (item.containsKey('note')) {
               // Render note
-              final message = item['note'] as String;
+              final message = item['note'].toString();
               return _MessageOwnTile(message: message);
             } else if (item.containsKey('fileType')) {
               final imageUrl = item['url'] as String;
               return _SharedFileTile(imageUrl: imageUrl);
+            } else if (item['type'] == 'IMAGE') {
+              return _SharedFileTile(file: item['value']);
             } else {
               // Handle other cases
               return const SizedBox.shrink(); // Or any default widget
@@ -115,11 +119,12 @@ class _MessageOwnTile extends StatelessWidget {
 }
 
 class _SharedFileTile extends StatefulWidget {
-  final String imageUrl;
-
+  final String? imageUrl;
+  final SharedMediaFile? file;
   const _SharedFileTile({
     Key? key,
-    required this.imageUrl,
+    this.imageUrl,
+    this.file,
   }) : super(key: key);
 
   @override
@@ -132,11 +137,13 @@ class _SharedFileTileState extends State<_SharedFileTile> {
   @override
   void initState() {
     super.initState();
+    if (widget.imageUrl != null) {
     _imageBytes = _fetchImageBytes();
+  }
   }
 
   Future<Uint8List> _fetchImageBytes() async {
-    final response = await get(Uri.parse(widget.imageUrl));
+    final response = await get(Uri.parse(widget.imageUrl!));
     if (response.statusCode == 200) {
       return response.bodyBytes;
     } else {
@@ -146,50 +153,93 @@ class _SharedFileTileState extends State<_SharedFileTile> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(26.0),
-                  bottomLeft: Radius.circular(26.0),
-                  bottomRight: Radius.circular(26.0),
+    if (widget.file != null) {
+      bool isImage = widget.file!.path.endsWith('.jpg') ||
+          widget.file!.path.endsWith('.jpeg') ||
+          widget.file!.path.endsWith('.png');
+
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(26.0),
+                    bottomLeft: Radius.circular(26.0),
+                    bottomRight: Radius.circular(26.0),
+                  ),
+                ),
+                child: isImage
+                    ? Image.file(
+                        File(widget.file!.path),
+                        width: 200, // Adjust image width as needed
+                        height: 200, // Adjust image height as needed
+                        fit: BoxFit.cover,
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(
+                          widget.file!.path,
+                          style: const TextStyle(color: Colors.green),
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(26.0),
+                    bottomLeft: Radius.circular(26.0),
+                    bottomRight: Radius.circular(26.0),
+                  ),
+                ),
+                child: FutureBuilder<Uint8List>(
+                  future: _imageBytes,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const CircularProgressIndicator();
+                    } else if (snapshot.hasError) {
+                      return const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Text(
+                          'Error loading image',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      );
+                    } else {
+                      return Image.memory(
+                        snapshot.data!,
+                        width: 200,
+                        height: 200,
+                        fit: BoxFit.cover,
+                      );
+                    }
+                  },
                 ),
               ),
-              child: FutureBuilder<Uint8List>(
-                future: _imageBytes,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const CircularProgressIndicator();
-                  } else if (snapshot.hasError) {
-                    return const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Text(
-                        'Error loading image',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    );
-                  } else {
-                    return Image.memory(
-                      snapshot.data!,
-                      width: 200,
-                      height: 200,
-                      fit: BoxFit.cover,
-                    );
-                  }
-                },
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 }

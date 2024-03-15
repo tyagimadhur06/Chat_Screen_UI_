@@ -54,7 +54,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _intentSub = ReceiveSharingIntent.getMediaStream().listen((value) {
       setState(() {
         for (SharedMediaFile i in value) {
-          messageData.add({"type": "IMAGE", "value": i});
+          messageData.insert(0 , {"type": "IMAGE", "value": i});
           _httpService.postData(imagePath: i.path).then((_) {
             print('Data Posted Successfully');
           }).catchError((e) {
@@ -78,7 +78,7 @@ class _ChatScreenState extends State<ChatScreen> {
     ReceiveSharingIntent.getInitialMedia().then((value) {
       setState(() {
         for (SharedMediaFile i in value) {
-          messageData.add({"type": "IMAGE", "value": i});
+          messageData.insert(0 , {"type": "IMAGE", "value": i});
           _httpService.postData(imagePath: i.path).then((_) {
             print('Data Posted Successfully');
           }).catchError((e) {
@@ -104,13 +104,15 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  void addNewMessage(String newMessage) async {
+  void addNewMessage(String newMessage)  async{
     if (newMessage.isNotEmpty) {
+      // Add message to local data nimmediately
       setState(() {
-        messageData.add({"type": "TEXT", "value": newMessage});
+        messageData.insert(0 , {'note': newMessage});
         messageController.clear();
       });
-      // Scroll to the bottom after adding new message
+
+      // Scroll to the bottom after adding the new message
       Timer(const Duration(milliseconds: 500), () {
         _scrollController.animateTo(
           _scrollController.position.minScrollExtent,
@@ -118,9 +120,19 @@ class _ChatScreenState extends State<ChatScreen> {
           curve: Curves.easeInOut,
         );
       });
-      await _httpService.postData(note: newMessage);
+
+      //Send message to API (handle errors)
+      try {
+        await _httpService.postData(note: newMessage);
+        // Optionally refetch data for server-generated information
+        // getData();
+      } catch (error) {
+        print('Error sending message: $error');
+        // Show error message to user
+      }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -191,7 +203,7 @@ class _ChatScreenState extends State<ChatScreen> {
         mimeType: mimeType,
       );
       setState(() {
-        messageData.add({"type": "IMAGE", "value": sharedMediaFile});
+        messageData.insert(0,{"type": "IMAGE", "value": sharedMediaFile});
       });
       final imagePath = pickedImage.path;
       await _httpService.postData(imagePath: imagePath);
@@ -211,7 +223,7 @@ class _ChatScreenState extends State<ChatScreen> {
       );
 
       setState(() {
-        messageData.add({"type": "IMAGE", "value": sharedMediaFile});
+        messageData.insert(0,{"type": "IMAGE", "value": sharedMediaFile});
       });
       final imagePath = pickedImage.path;
       await _httpService.postData(imagePath: imagePath);

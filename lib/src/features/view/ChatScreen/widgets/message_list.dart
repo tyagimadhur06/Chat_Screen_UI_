@@ -1,22 +1,17 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:http/http.dart';
 
 class MessageList extends StatefulWidget {
   const MessageList(
-      {Key? key,
-      required this.messages,
-      required this.sharedFiles,
-      required this.messageData,
-      required this.scrollController})
+      {Key? key, required this.messageData, required this.scrollController})
       : super(key: key);
 
   @override
   State<MessageList> createState() => MessageListState();
-  final List<String> messages;
-  final List<SharedMediaFile> sharedFiles;
+
   final List<Map<String, dynamic>> messageData;
   final scrollController;
 }
@@ -55,26 +50,20 @@ class MessageListState extends State<MessageList> {
             //   message: widget.messageData[index]['id'].toString(),
             // );
             final item = widget.messageData[index];
-            // Check if the item contains both "note" and "fileType" fields
             if (item.containsKey('note') && item.containsKey('fileType')) {
               // Render shared file
-              final file = SharedMediaFile(
-                path: item['path'] as String,
-                type: SharedMediaType
-                    .image, // Assuming this is the correct type for images
-                thumbnail: 'Image',
-                mimeType: item['fileType']
-                    as String, // Assuming "fileType" is the MIME type
-              );
-              return _SharedFileTile(file: file);
+              final imageUrl = item['url'] as String;
+              return _SharedFileTile(imageUrl: imageUrl);
             } else if (item.containsKey('note')) {
               // Render note
-              final message = item['note']
-                  as String; // Assuming "note" contains the text message
+              final message = item['note'] as String;
               return _MessageOwnTile(message: message);
+            } else if (item.containsKey('fileType')) {
+              final imageUrl = item['url'] as String;
+              return _SharedFileTile(imageUrl: imageUrl);
             } else {
               // Handle other cases
-              return SizedBox.shrink(); // Or any default widget
+              return const SizedBox.shrink(); // Or any default widget
             }
           },
         ),
@@ -125,21 +114,38 @@ class _MessageOwnTile extends StatelessWidget {
   }
 }
 
-class _SharedFileTile extends StatelessWidget {
+class _SharedFileTile extends StatefulWidget {
+  final String imageUrl;
+
   const _SharedFileTile({
     Key? key,
-    required this.file,
+    required this.imageUrl,
   }) : super(key: key);
 
-  final SharedMediaFile file;
+  @override
+  _SharedFileTileState createState() => _SharedFileTileState();
+}
+
+class _SharedFileTileState extends State<_SharedFileTile> {
+  late Future<Uint8List> _imageBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageBytes = _fetchImageBytes();
+  }
+
+  Future<Uint8List> _fetchImageBytes() async {
+    final response = await get(Uri.parse(widget.imageUrl));
+    if (response.statusCode == 200) {
+      return response.bodyBytes;
+    } else {
+      throw Exception('Failed to load image');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Determine if the file is an image or a link
-    bool isImage = file.path.endsWith('.jpg') ||
-        file.path.endsWith('.jpeg') ||
-        file.path.endsWith('.png');
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Align(
@@ -157,20 +163,29 @@ class _SharedFileTile extends StatelessWidget {
                   bottomRight: Radius.circular(26.0),
                 ),
               ),
-              child: isImage
-                  ? Image.file(
-                      File(file.path),
-                      width: 200, // Adjust image width as needed
-                      height: 200, // Adjust image height as needed
-                      fit: BoxFit.cover,
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.all(8.0),
+              child: FutureBuilder<Uint8List>(
+                future: _imageBytes,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const CircularProgressIndicator();
+                  } else if (snapshot.hasError) {
+                    return const Padding(
+                      padding: EdgeInsets.all(8.0),
                       child: Text(
-                        file.path,
-                        style: const TextStyle(color: Colors.green),
+                        'Error loading image',
+                        style: TextStyle(color: Colors.red),
                       ),
-                    ),
+                    );
+                  } else {
+                    return Image.memory(
+                      snapshot.data!,
+                      width: 200,
+                      height: 200,
+                      fit: BoxFit.cover,
+                    );
+                  }
+                },
+              ),
             ),
           ],
         ),

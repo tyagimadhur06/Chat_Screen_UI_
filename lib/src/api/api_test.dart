@@ -1,7 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
-
-import 'package:get/get_connect/http/src/multipart/form_data.dart';
 import 'package:http/http.dart';
 
 class HttpService {
@@ -47,4 +44,5 @@ class HttpService {
       print('Error posting data: $e');
     }
   }
+  
 }

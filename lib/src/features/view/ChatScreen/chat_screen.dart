@@ -19,16 +19,15 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  List<String> messages = [
-    'Hi , Madhur! How are you doing?',
-    'Great bro....',
-    'Lets go for a walk??',
-    'Sure!',
-    'Come fast',
-    'Coming in 10 min ',
-  ];
+  // List<String> messages = [
+  //   'Hi , Madhur! How are you doing?',
+  //   'Great bro....',
+  //   'Lets go for a walk??',
+  //   'Sure!',
+  //   'Come fast',
+  //   'Coming in 10 min ',
+  // ];
   List<Map<String, dynamic>> messageData = [];
-  final sharedFiles = <SharedMediaFile>[];
   late StreamSubscription _intentSub;
   TextEditingController messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -56,10 +55,12 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         for (SharedMediaFile i in value) {
           messageData.add({"type": "IMAGE", "value": i});
+          _httpService.postData(imagePath: i.path).then((_) {
+            print('Data Posted Successfully');
+          }).catchError((e) {
+            print('Error posting the data : $e');
+          });
         }
-        //sharedFiles.addAll(value);
-        // sharedFiles.clear();
-        //print("the shared file is ${sharedFiles.map((f) => f.toMap())}");
       });
       // Scroll to the bottom after adding new message
       Timer(const Duration(milliseconds: 500), () {
@@ -78,13 +79,12 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         for (SharedMediaFile i in value) {
           messageData.add({"type": "IMAGE", "value": i});
+          _httpService.postData(imagePath: i.path).then((_) {
+            print('Data Posted Successfully');
+          }).catchError((e) {
+            print('Error posting the data : $e');
+          });
         }
-
-        //sharedFiles.addAll(value);
-        // sharedFiles.clear();
-        //print(sharedFiles.map((f) => f.toMap()));
-
-        // Tell the library that we are done processing the intent.
         ReceiveSharingIntent.reset();
       });
       // Scroll to the bottom after adding new message
@@ -104,11 +104,10 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  void addNewMessage(String newMessage) async{
+  void addNewMessage(String newMessage) async {
     if (newMessage.isNotEmpty) {
       setState(() {
         messageData.add({"type": "TEXT", "value": newMessage});
-        messages.add(newMessage);
         messageController.clear();
       });
       // Scroll to the bottom after adding new message
@@ -119,7 +118,7 @@ class _ChatScreenState extends State<ChatScreen> {
           curve: Curves.easeInOut,
         );
       });
-      await _httpService.postData(note:newMessage);
+      await _httpService.postData(note: newMessage);
     }
   }
 
@@ -166,10 +165,8 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
               child: MessageList(
-            messages: messages.reversed.toList(),
-            sharedFiles: sharedFiles,
             scrollController: _scrollController,
-            messageData: messageData.reversed.toList(),
+            messageData: messageData.toList(),
           )),
           ActionBar(
             messageController: messageController,
@@ -197,7 +194,7 @@ class _ChatScreenState extends State<ChatScreen> {
         messageData.add({"type": "IMAGE", "value": sharedMediaFile});
       });
       final imagePath = pickedImage.path;
-      await _httpService.postData(imagePath:imagePath);
+      await _httpService.postData(imagePath: imagePath);
     }
   }
 
@@ -212,18 +209,12 @@ class _ChatScreenState extends State<ChatScreen> {
         thumbnail: 'Image',
         mimeType: mimeType,
       );
-    
+
       setState(() {
         messageData.add({"type": "IMAGE", "value": sharedMediaFile});
       });
       final imagePath = pickedImage.path;
-      await _httpService.postData(imagePath:imagePath);
+      await _httpService.postData(imagePath: imagePath);
     }
   }
 }
-
-// class messageDTO {
-//   String? type;
-//   dynamic value;
-//   messageDTO({this.type, this.value});
-// }

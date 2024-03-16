@@ -4,7 +4,10 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:shimmer/shimmer.dart';
 
 class MessageList extends StatefulWidget {
   const MessageList(
@@ -61,9 +64,21 @@ class MessageListState extends State<MessageList> {
               final message = item['note'].toString();
               return _MessageOwnTile(message: message);
             } else if (item.containsKey('fileType')) {
-              final imageUrl = item['url'] as String;
-              return _SharedFileTile(imageUrl: imageUrl);
+              final filetype = item['fileType'] as String;
+              if (filetype == 'jpg' ||
+                  filetype == 'jpeg' ||
+                  filetype == 'png') {
+                final imageUrl = item['url'] as String;
+                return _SharedFileTile(imageUrl: imageUrl);
+              } else if (filetype == 'pdf') {
+                final fileUrl = item['url'] as String;
+                return _SharedFileTile(
+                  fileUrl: fileUrl,
+                );
+              }
             } else if (item['type'] == 'IMAGE') {
+              return _SharedFileTile(file: item['value']);
+            } else if (item['type'] == 'FILE') {
               return _SharedFileTile(file: item['value']);
             } else {
               // Handle other cases
@@ -120,10 +135,13 @@ class _MessageOwnTile extends StatelessWidget {
 
 class _SharedFileTile extends StatefulWidget {
   final String? imageUrl;
+  final String? fileUrl;
   final SharedMediaFile? file;
+
   const _SharedFileTile({
     Key? key,
     this.imageUrl,
+    this.fileUrl,
     this.file,
   }) : super(key: key);
 
@@ -132,33 +150,105 @@ class _SharedFileTile extends StatefulWidget {
 }
 
 class _SharedFileTileState extends State<_SharedFileTile> {
-  late Future<Uint8List> _imageBytes;
+  late Future<Uint8List> _fileBytes;
 
   @override
   void initState() {
     super.initState();
     if (widget.imageUrl != null) {
-    _imageBytes = _fetchImageBytes();
-  }
+      _fileBytes = _fetchFileBytes(Uri.parse(widget.imageUrl!));
+    } else if (widget.fileUrl != null) {
+      _fileBytes = _fetchFileBytes(Uri.parse(widget.fileUrl!));
+    }
   }
 
-  Future<Uint8List> _fetchImageBytes() async {
-    final response = await get(Uri.parse(widget.imageUrl!));
-    if (response.statusCode == 200) {
-      return response.bodyBytes;
-    } else {
-      throw Exception('Failed to load image');
+  Future<Uint8List> _fetchFileBytes(Uri uri) async {
+    try {
+      final response = await get(uri);
+      if (response.statusCode == 200) {
+        return response.bodyBytes;
+      } else {
+        throw Exception('Failed to load file');
+      }
+    } catch (e) {
+      throw Exception('Error fetching file: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.file != null) {
-      bool isImage = widget.file!.path.endsWith('.jpg') ||
-          widget.file!.path.endsWith('.jpeg') ||
-          widget.file!.path.endsWith('.png');
+      final String path = widget.file!.path;
+      final bool isImage = path.endsWith('.jpg') ||
+          path.endsWith('.jpeg') ||
+          path.endsWith('.png');
+      final bool isPdf = path.endsWith('.pdf');
 
-      return Padding(
+      if (isImage) {
+        return _buildImageWidget();
+      } else if (isPdf) {
+        return _buildPdfWidget();
+      } else {
+        return _buildDefaultWidget();
+      }
+    } else if (widget.imageUrl != null) {
+      return _buildFutureBuilderWidgetImage();
+    } else if (widget.fileUrl != null) {
+      return _buildFutureBuilderWidgetFile();
+    } else {
+      return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildImageWidget() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(26.0),
+                  bottomLeft: Radius.circular(26.0),
+                  bottomRight: Radius.circular(26.0),
+                ),
+              ),
+              child: GestureDetector(
+                onTap: () {
+                  OpenFile.open(widget.file?.path);
+                },
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(26.0),
+                    bottomLeft: Radius.circular(26.0),
+                    bottomRight: Radius.circular(26.0),
+                  ),
+                  child: Image.file(
+                    File(widget.file!.path),
+                    width: 200,
+                    height: 200,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPdfWidget() {
+    return GestureDetector(
+      onTap: () {
+        OpenFile.open(widget.file!.path);
+      },
+      child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4.0),
         child: Align(
           alignment: Alignment.centerRight,
@@ -175,71 +265,189 @@ class _SharedFileTileState extends State<_SharedFileTile> {
                     bottomRight: Radius.circular(26.0),
                   ),
                 ),
-                child: isImage
-                    ? Image.file(
-                        File(widget.file!.path),
-                        width: 200, // Adjust image width as needed
-                        height: 200, // Adjust image height as needed
-                        fit: BoxFit.cover,
-                      )
-                    : Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          widget.file!.path,
-                          style: const TextStyle(color: Colors.green),
-                        ),
-                      ),
+                child: const Icon(
+                  Icons.picture_as_pdf,
+                  size: 70,
+                  color: Colors.blueAccent, // Customize PDF icon color
+                ),
               ),
             ],
           ),
         ),
-      );
-    } else {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4.0),
-        child: Align(
-          alignment: Alignment.centerRight,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(26.0),
-                    bottomLeft: Radius.circular(26.0),
-                    bottomRight: Radius.circular(26.0),
-                  ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultWidget() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(26.0),
+                  bottomLeft: Radius.circular(26.0),
+                  bottomRight: Radius.circular(26.0),
                 ),
-                child: FutureBuilder<Uint8List>(
-                  future: _imageBytes,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const CircularProgressIndicator();
-                    } else if (snapshot.hasError) {
-                      return const Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: Text(
-                          'Error loading image',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      );
-                    } else {
-                      return Image.memory(
-                        snapshot.data!,
+              ),
+              child: const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text(
+                  'Unsupported file format',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFutureBuilderWidgetImage() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                color: Colors.greenAccent[200],
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(26.0),
+                  bottomLeft: Radius.circular(26.0),
+                  bottomRight: Radius.circular(26.0),
+                ),
+              ),
+              child: FutureBuilder<Uint8List>(
+                future: _fileBytes,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Shimmer.fromColors(
+                      baseColor: Colors.grey[300]!,
+                      highlightColor: Colors.grey[100]!,
+                      child: Container(
                         width: 200,
                         height: 200,
-                        fit: BoxFit.cover,
-                      );
-                    }
-                  },
+                        decoration: BoxDecoration(
+                            color: Colors.greenAccent[200],
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(26.0),
+                              bottomLeft: Radius.circular(26.0),
+                              bottomRight: Radius.circular(26.0),
+                            )),
+                      ),
+                    );
+                  } else if (snapshot.hasError) {
+                    return const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Text(
+                        'Error loading image',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    );
+                  } else {
+                    return GestureDetector(
+                      onTap: () async {
+                        final tempDir = await getTemporaryDirectory();
+                        final file = File('${tempDir.path}/temp.jpg');
+                        await file.writeAsBytes(snapshot.data!);
+                        OpenFile.open(file.path);
+                      },
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(26.0),
+                          bottomLeft: Radius.circular(26.0),
+                          bottomRight: Radius.circular(26.0),
+                        ),
+                        child: Image.memory(
+                          snapshot.data!,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFutureBuilderWidgetFile() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(26.0),
+                  bottomLeft: Radius.circular(26.0),
+                  bottomRight: Radius.circular(26.0),
                 ),
               ),
-            ],
-          ),
+              child: FutureBuilder<Uint8List>(
+                future: _fileBytes,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Shimmer.fromColors(
+                      baseColor: Colors.grey[300]!, // Light grey
+                      highlightColor: Colors.grey[100]!, // Darker grey
+                      child: const Icon(
+                        Icons.picture_as_pdf,
+                        size: 70,
+                        color: Colors.blueAccent, // Customize PDF icon color
+                      ),
+                    );
+                  } else if (snapshot.hasError) {
+                    return const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Text(
+                        'Error loading file',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    );
+                  } else {
+                    return GestureDetector(
+                      onTap: () async {
+                        // Open PDF file
+                        final tempDir = await getTemporaryDirectory();
+                        final file = File('${tempDir.path}/temp.pdf');
+                        await file.writeAsBytes(snapshot.data!);
+                        OpenFile.open(file.path);
+                      },
+                      child: const Icon(
+                        Icons.picture_as_pdf,
+                        size: 70,
+                        color: Colors.blueAccent, // Customize PDF icon color
+                      ),
+                    );
+                  }
+                },
+              ),
+            ),
+          ],
         ),
-      );
-    }
+      ),
+    );
   }
 }

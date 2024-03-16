@@ -11,13 +11,14 @@ class ActionBar extends StatelessWidget {
     required this.onSendPressed,
     required this.onCameraPressed,
     required this.onGalleryPressed,
+    required this.onPaperClipPressed,
   }) : super(key: key);
 
   final TextEditingController messageController;
   final VoidCallback onSendPressed;
   final VoidCallback onCameraPressed;
   final VoidCallback onGalleryPressed;
-
+  final VoidCallback onPaperClipPressed;
   void _showImageSourceBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -60,7 +61,7 @@ class ActionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       bottom: true,
-      top: false,
+      top: false, 
       child: Row(
         children: [
           Container(
@@ -77,9 +78,11 @@ class ActionBar extends StatelessWidget {
                     onPressed: () => _showImageSourceBottomSheet(context),
                     icon: const Icon(CupertinoIcons.camera_fill)),
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 0),
-                child: Icon(CupertinoIcons.paperclip),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 0),
+                child: IconButton(
+                  onPressed: onPaperClipPressed, 
+                  icon: const Icon(CupertinoIcons.paperclip))
               ),
             ]),
           ),

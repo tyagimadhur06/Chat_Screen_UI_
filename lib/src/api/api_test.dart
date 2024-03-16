@@ -15,18 +15,21 @@ class HttpService {
     }
   }
 
-  Future<void> postData({String? note, String? imagePath}) async {
+  Future<void> postData(
+      {String? note, String? imagePath, String? filePath}) async {
     final Uri url = Uri.parse('$baseURl/notes');
 
     try {
       var request = MultipartRequest('POST', url);
       if (note != null) {
-      request.fields['note'] = note;
-    }
-    if (imagePath != null) {
-      request.files.add(await MultipartFile.fromPath('file', imagePath));
-    }
-
+        request.fields['note'] = note;
+      }
+      if (imagePath != null) {
+        request.files.add(await MultipartFile.fromPath('file', imagePath));
+      }
+      if (filePath != null) {
+        request.files.add(await MultipartFile.fromPath('file', filePath));
+      }
 
       var streamedRespone = await request.send();
       var response = await Response.fromStream(streamedRespone);
@@ -44,5 +47,4 @@ class HttpService {
       print('Error posting data: $e');
     }
   }
-  
 }

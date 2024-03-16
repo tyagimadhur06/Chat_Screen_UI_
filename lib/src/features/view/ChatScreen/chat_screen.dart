@@ -6,6 +6,7 @@ import 'package:chat_screen/src/common/icon_button.dart';
 import 'package:chat_screen/src/features/view/ChatScreen/widgets/action_bar.dart';
 import 'package:chat_screen/src/features/view/ChatScreen/widgets/appbar_title.dart';
 import 'package:chat_screen/src/features/view/ChatScreen/widgets/message_list.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -56,7 +57,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _intentSub = ReceiveSharingIntent.getMediaStream().listen((value) {
       setState(() {
         for (SharedMediaFile i in value) {
-          messageData.insert(0, {"type": "IMAGE", "value": i});
+          messageData.insert(0, {"type": "fileType", "value": i});
           _httpService.postData(imagePath: i.path).then((_) {
             print('Data Posted Successfully');
           }).catchError((e) {
@@ -80,7 +81,7 @@ class _ChatScreenState extends State<ChatScreen> {
     ReceiveSharingIntent.getInitialMedia().then((value) {
       setState(() {
         for (SharedMediaFile i in value) {
-          messageData.insert(0, {"type": "IMAGE", "value": i});
+          messageData.insert(0, {"type": "fileType", "value": i});
           _httpService.postData(imagePath: i.path).then((_) {
             print('Data Posted Successfully');
           }).catchError((e) {
@@ -186,6 +187,7 @@ class _ChatScreenState extends State<ChatScreen> {
             onSendPressed: () => addNewMessage(messageController.text),
             onCameraPressed: () => _pickImageFromCamera(),
             onGalleryPressed: () => _pickImageFromGallery(),
+            onPaperClipPressed:() => _pickFileFromDevice(),
           ),
         ],
       ),
@@ -193,57 +195,95 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   _pickImageFromGallery() async {
-  final pickedImage = await ImagePicker().pickImage(source: ImageSource.gallery);
-  if (pickedImage != null) {
-    // Compress the image
-    final XFile? compressedImage = await _compressImage(pickedImage);
-    print("Compressed file is $compressedImage");
+    final pickedImage =
+        await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (pickedImage != null) {
+      // Compress the image
+      final XFile? compressedImage = await _compressImage(pickedImage);
+      print("Compressed file is $compressedImage");
 
-    if (compressedImage != null) {
-      final String mimeType = 'image/${pickedImage.path.split('.').last}';
-      final sharedMediaFile = SharedMediaFile(
-        path: compressedImage.path,
-        type: SharedMediaType.image,
-        thumbnail: 'Image',
-        mimeType: mimeType,
-      );
+      if (compressedImage != null) {
+        final String mimeType = 'image/${pickedImage.path.split('.').last}';
+        final sharedMediaFile = SharedMediaFile(
+          path: compressedImage.path,
+          type: SharedMediaType.image,
+          thumbnail: 'Image',
+          mimeType: mimeType,
+        );
 
-      setState(() {
-        messageData.insert(0, {"type": "IMAGE", "value": sharedMediaFile});
-      });
+        setState(() {
+          messageData.insert(0, {"type": "IMAGE", "value": sharedMediaFile});
+        });
 
-      await _httpService.postData(imagePath: compressedImage.path);
-    } else {
-      print("Compression failed or image is null.");
+        await _httpService.postData(imagePath: compressedImage.path);
+      } else {
+        print("Compression failed or image is null.");
+      }
     }
   }
-}
 
   _pickImageFromCamera() async {
-    final pickedImage = await ImagePicker().pickImage(source: ImageSource.camera);
-  if (pickedImage != null) {
-    // Compress the image
-    final XFile? compressedImage = await _compressImage(pickedImage);
-    print("Compressed file is $compressedImage");
+    final pickedImage =
+        await ImagePicker().pickImage(source: ImageSource.camera);
+    if (pickedImage != null) {
+      // Compress the image
+      final XFile? compressedImage = await _compressImage(pickedImage);
+      print("Compressed file is $compressedImage");
 
-    if (compressedImage != null) {
-      final String mimeType = 'image/${pickedImage.path.split('.').last}';
-      final sharedMediaFile = SharedMediaFile(
-        path: compressedImage.path,
-        type: SharedMediaType.image,
-        thumbnail: 'Image',
-        mimeType: mimeType,
-      );
+      if (compressedImage != null) {
+        final String mimeType = 'image/${pickedImage.path.split('.').last}';
+        final sharedMediaFile = SharedMediaFile(
+          path: compressedImage.path,
+          type: SharedMediaType.image,
+          thumbnail: 'Image',
+          mimeType: mimeType,
+        );
 
-      setState(() {
-        messageData.insert(0, {"type": "IMAGE", "value": sharedMediaFile});
-      });
+        setState(() {
+          messageData.insert(0, {"type": "IMAGE", "value": sharedMediaFile});
+        });
 
-      await _httpService.postData(imagePath: compressedImage.path);
-    } else {
-      print("Compression failed or image is null.");
+        await _httpService.postData(imagePath: compressedImage.path);
+      } else {
+        print("Compression failed or image is null.");
+      }
     }
   }
+
+  _pickFileFromDevice() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'doc', 'docx'],
+      allowMultiple: true,
+    );
+
+    if (result != null) {
+      PlatformFile file = result.files.first;
+      if (file.extension == 'pdf' ||
+          file.extension == 'doc' ||
+          file.extension == 'docx') {
+        // Handle the file based on its extension
+        final String mimeType = 'application/${file.extension}';
+        final sharedMediaFile = SharedMediaFile(
+          path: file.path!,
+          type: SharedMediaType.file,
+          thumbnail: file.name,
+          mimeType: mimeType,
+        );
+
+        setState(() {
+          messageData.insert(0, {"type": "FILE", "value": sharedMediaFile});
+        });
+
+        await _httpService.postData(filePath: file.path);
+      } else {
+        // Invalid file type selected
+        print("Unsupported file type selected.");
+      }
+    } else {
+      // User canceled the file picker
+      print("File picking canceled by user.");
+    }
   }
 
   Future<XFile?> _compressImage(XFile? file) async {

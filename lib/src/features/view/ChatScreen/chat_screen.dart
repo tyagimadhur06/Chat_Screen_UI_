@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:chat_screen/src/api/api_test.dart';
 import 'package:chat_screen/src/common/icon_button.dart';
@@ -7,6 +8,7 @@ import 'package:chat_screen/src/features/view/ChatScreen/widgets/appbar_title.da
 import 'package:chat_screen/src/features/view/ChatScreen/widgets/message_list.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:get/route_manager.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
@@ -54,7 +56,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _intentSub = ReceiveSharingIntent.getMediaStream().listen((value) {
       setState(() {
         for (SharedMediaFile i in value) {
-          messageData.insert(0 , {"type": "IMAGE", "value": i});
+          messageData.insert(0, {"type": "IMAGE", "value": i});
           _httpService.postData(imagePath: i.path).then((_) {
             print('Data Posted Successfully');
           }).catchError((e) {
@@ -78,7 +80,7 @@ class _ChatScreenState extends State<ChatScreen> {
     ReceiveSharingIntent.getInitialMedia().then((value) {
       setState(() {
         for (SharedMediaFile i in value) {
-          messageData.insert(0 , {"type": "IMAGE", "value": i});
+          messageData.insert(0, {"type": "IMAGE", "value": i});
           _httpService.postData(imagePath: i.path).then((_) {
             print('Data Posted Successfully');
           }).catchError((e) {
@@ -104,11 +106,11 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  void addNewMessage(String newMessage)  async{
+  void addNewMessage(String newMessage) async {
     if (newMessage.isNotEmpty) {
       // Add message to local data nimmediately
       setState(() {
-        messageData.insert(0 , {'note': newMessage});
+        messageData.insert(0, {'note': newMessage});
         messageController.clear();
       });
 
@@ -132,7 +134,6 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -192,41 +193,83 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   _pickImageFromGallery() async {
-    final pickedImage =
-        await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (pickedImage != null) {
+  final pickedImage = await ImagePicker().pickImage(source: ImageSource.gallery);
+  if (pickedImage != null) {
+    // Compress the image
+    final XFile? compressedImage = await _compressImage(pickedImage);
+    print("Compressed file is $compressedImage");
+
+    if (compressedImage != null) {
       final String mimeType = 'image/${pickedImage.path.split('.').last}';
       final sharedMediaFile = SharedMediaFile(
-        path: pickedImage.path,
+        path: compressedImage.path,
         type: SharedMediaType.image,
         thumbnail: 'Image',
         mimeType: mimeType,
       );
+
       setState(() {
-        messageData.insert(0,{"type": "IMAGE", "value": sharedMediaFile});
+        messageData.insert(0, {"type": "IMAGE", "value": sharedMediaFile});
       });
-      final imagePath = pickedImage.path;
-      await _httpService.postData(imagePath: imagePath);
+
+      await _httpService.postData(imagePath: compressedImage.path);
+    } else {
+      print("Compression failed or image is null.");
     }
   }
+}
 
   _pickImageFromCamera() async {
-    final pickedImage =
-        await ImagePicker().pickImage(source: ImageSource.camera);
-    if (pickedImage != null) {
+    final pickedImage = await ImagePicker().pickImage(source: ImageSource.camera);
+  if (pickedImage != null) {
+    // Compress the image
+    final XFile? compressedImage = await _compressImage(pickedImage);
+    print("Compressed file is $compressedImage");
+
+    if (compressedImage != null) {
       final String mimeType = 'image/${pickedImage.path.split('.').last}';
       final sharedMediaFile = SharedMediaFile(
-        path: pickedImage.path,
+        path: compressedImage.path,
         type: SharedMediaType.image,
         thumbnail: 'Image',
         mimeType: mimeType,
       );
 
       setState(() {
-        messageData.insert(0,{"type": "IMAGE", "value": sharedMediaFile});
+        messageData.insert(0, {"type": "IMAGE", "value": sharedMediaFile});
       });
-      final imagePath = pickedImage.path;
-      await _httpService.postData(imagePath: imagePath);
+
+      await _httpService.postData(imagePath: compressedImage.path);
+    } else {
+      print("Compression failed or image is null.");
     }
   }
+  }
+
+  Future<XFile?> _compressImage(XFile? file) async {
+    if (file == null) return null;
+
+    final filePath = file.path;
+    final lastIndex = filePath.lastIndexOf(RegExp(r'.jp'));
+    final splitted = filePath.substring(0, (lastIndex));
+    final outPath = "${splitted}_out${filePath.substring(lastIndex)}";
+    var result = await FlutterImageCompress.compressAndGetFile(
+      file.path,
+      outPath,
+      quality: 80,
+    );
+    return result;
+  }
+  // Future<File> testCompressAndGetFile(File file, String targetPath) async {
+  //   var result = await FlutterImageCompress.compressAndGetFile(
+  //       file.absolute.path, targetPath,
+  //       quality: 88,
+  //       rotate: 180,
+  //     );
+
+  //   // print(file.lengthSync());
+  //   // print(result.lengthSync());
+
+  //   return result;
+  // }
 }

@@ -11,7 +11,7 @@ import 'package:shimmer/shimmer.dart';
 
 class MessageList extends StatefulWidget {
   const MessageList(
-      {Key? key, required this.messageData, required this.scrollController})
+      {Key? key, required this.messageData, required this.scrollController , required this.isLoadingMore})
       : super(key: key);
 
   @override
@@ -19,6 +19,7 @@ class MessageList extends StatefulWidget {
 
   final List<Map<String, dynamic>> messageData;
   final scrollController;
+  final isLoadingMore;
 }
 
 class MessageListState extends State<MessageList> {
@@ -32,7 +33,7 @@ class MessageListState extends State<MessageList> {
           shrinkWrap: true,
           reverse: true,
           controller: widget.scrollController,
-          itemCount: widget.messageData.length,
+          itemCount: widget.messageData.length + 1,
           //itemCount: widget.messages.length + widget.sharedFiles.length,
           itemBuilder: (context, index) {
             // if (index < widget.messages.length) {
@@ -54,7 +55,8 @@ class MessageListState extends State<MessageList> {
             // return _MessageOwnTile(
             //   message: widget.messageData[index]['id'].toString(),
             // );
-            final item = widget.messageData[index];
+            if(index < widget.messageData.length){
+              final item = widget.messageData[index];
             if (item.containsKey('note') && item.containsKey('fileType')) {
               // Render shared file
               final imageUrl = item['url'] as String;
@@ -84,6 +86,10 @@ class MessageListState extends State<MessageList> {
               // Handle other cases
               return const SizedBox.shrink(); // Or any default widget
             }
+            }else{
+              return const Center(child: CircularProgressIndicator(),);
+            }
+            
           },
         ),
       ),

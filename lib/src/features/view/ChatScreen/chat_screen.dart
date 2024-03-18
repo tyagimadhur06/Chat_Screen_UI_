@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:chat_screen/src/api/api_test.dart';
 import 'package:chat_screen/src/common/icon_button.dart';
@@ -30,14 +29,16 @@ class _ChatScreenState extends State<ChatScreen> {
   //   'Come fast',
   //   'Coming in 10 min ',
   // ];
+  int page = 0;
   List<Map<String, dynamic>> messageData = [];
   late StreamSubscription _intentSub;
   TextEditingController messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final HttpService _httpService = HttpService();
 
+  bool isLoading = false;
   getData() async {
-    await _httpService.getData().then((messages) {
+    await _httpService.getData(page).then((messages) {
       print('message data get$messages');
       setState(() {
         messageData.addAll(messages);
@@ -52,6 +53,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     getData();
+    _scrollController.addListener(_scrollListener);
 
     // Listen to media sharing coming from outside the app while the app is in the memory.
     _intentSub = ReceiveSharingIntent.getMediaStream().listen((value) {
@@ -179,6 +181,7 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
               child: MessageList(
+            isLoadingMore: isLoading,
             scrollController: _scrollController,
             messageData: messageData.toList(),
           )),
@@ -187,7 +190,7 @@ class _ChatScreenState extends State<ChatScreen> {
             onSendPressed: () => addNewMessage(messageController.text),
             onCameraPressed: () => _pickImageFromCamera(),
             onGalleryPressed: () => _pickImageFromGallery(),
-            onPaperClipPressed:() => _pickFileFromDevice(),
+            onPaperClipPressed: () => _pickFileFromDevice(),
           ),
         ],
       ),
@@ -300,16 +303,19 @@ class _ChatScreenState extends State<ChatScreen> {
     );
     return result;
   }
-  // Future<File> testCompressAndGetFile(File file, String targetPath) async {
-  //   var result = await FlutterImageCompress.compressAndGetFile(
-  //       file.absolute.path, targetPath,
-  //       quality: 88,
-  //       rotate: 180,
-  //     );
 
-  //   // print(file.lengthSync());
-  //   // print(result.lengthSync());
-
-  //   return result;
-  // }
+  Future<void> _scrollListener() async {
+    if (isLoading) return;
+    if (_scrollController.position.pixels ==
+        _scrollController.position.maxScrollExtent) {
+      setState(() {
+        isLoading = true;
+      });
+      page++;
+      await getData();
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 }

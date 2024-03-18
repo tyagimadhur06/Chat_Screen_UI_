@@ -90,6 +90,8 @@ class ActionBar extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(left: 16),
               child: TextField(
+                textInputAction: TextInputAction.newline,
+                maxLines: null,
                 controller: messageController,
                 style: const TextStyle(fontSize: 14),
                 decoration: const InputDecoration(

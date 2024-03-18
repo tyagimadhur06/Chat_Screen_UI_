@@ -1,10 +1,13 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
+
 import 'package:http/http.dart';
 
 class HttpService {
   final String baseURl = "https://api.carvia-test.org/store-service";
-  Future<List<Map<String, dynamic>>> getData() async {
-    Response res = await get(Uri.parse('$baseURl/notes'));
+
+  Future<List<Map<String, dynamic>>> getData(int page) async {
+    Response res = await get(Uri.parse('$baseURl/notes?page=$page'));
 
     if (res.statusCode == 200) {
       final List<dynamic> content = jsonDecode(res.body)['content'] ?? [];
